@@ -279,18 +279,27 @@ class Service:
         version = int(meta.get("version", 0)) + int(buddy_status.get("version", 0))
         source_models = {"codex": r["models"]}
         source_models.update(buddy_status.get("models") or {})
-        sources = [{"id": "codex", "label": "Codex", "available": True, "records": r["records"]}]
+        try:
+            codex_health = store.health_summary()
+        except (OSError, sqlite3.Error):
+            codex_health = {"skipped": 0, "invalid": 0}
+        sources = [{"id": "codex", "label": "Codex", "available": True, "records": r["records"],
+                    "skipped": codex_health["skipped"], "invalid": codex_health["invalid"]}]
         for source in BUDDY_SOURCES:
             info = buddy_status["sources"][source]
             sources.append({"id": source, "label": LABELS[source],
-                            "available": info["exists"], "records": info["records"]})
+                            "available": info["exists"], "records": info["records"],
+                            "skipped": int(info.get("skipped") or 0),
+                            "invalid": int(info.get("invalid") or 0)})
+        health = {"skipped": sum(item["skipped"] for item in sources),
+                  "invalid": sum(item["invalid"] for item in sources)}
         return dict(home=str(store.home), version=version, records=r["records"],
                     earliest=r["earliest"], latest=r["latest"], lastSuccess=meta.get("lastSuccess"),
                     lastAttempt=meta.get("lastAttempt"), lastImport=meta.get("lastImport"),
                     pricingVersion=PRICE_VERSION, pricingChecked=PRICING_CHECKED,
                     models=r["models"], sourceModels=source_models,
                     allModels=sorted({model for values in source_models.values() for model in values}),
-                    sources=sources, buddy=buddy_status, appVersion=__version__,
+                    sources=sources, health=health, buddy=buddy_status, appVersion=__version__,
                     quota=meta.get("quota"), responseBackfillPending=meta.get("responseVersion") != 1)
 
     @staticmethod

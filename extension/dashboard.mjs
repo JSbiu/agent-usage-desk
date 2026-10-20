@@ -608,6 +608,8 @@ function settings() {
   $('#setting-error').textContent = '';
   if (!state.status) {
     $('#connection-info').textContent = '读取器尚未连接。请运行 install.ps1，然后点击刷新。';
+    $('#health-info').textContent = '';
+    $('#health-info').classList.remove('health-warn');
   } else {
     const parts = [`Codex ${full(state.status.records)} 条`];
     for (const item of state.status.sources || []) {
@@ -619,6 +621,17 @@ function settings() {
       parts.push(`桥接运行：${bridge.exists ? `${full(bridge.runs)} 次 / ${full(bridge.sessions)} 个会话` : '未发现来源'}`);
     }
     $('#connection-info').textContent = `已建立本地索引：${parts.join('；')}。参考价版本 ${state.status.pricingVersion}。`;
+    const unparsed = (state.status.health?.skipped ?? 0) + (state.status.health?.invalid ?? 0);
+    const health = $('#health-info');
+    health.classList.toggle('health-warn', unparsed > 0);
+    if (!unparsed) {
+      health.textContent = '数据健康：所有日志行均已计入统计。';
+    } else {
+      const detail = (state.status.sources || [])
+        .filter((item) => (item.skipped || 0) + (item.invalid || 0) > 0)
+        .map((item) => `${item.label} ${full((item.skipped || 0) + (item.invalid || 0))} 行`);
+      health.textContent = `数据健康：${full(unparsed)} 行无法解析，未计入统计（${detail.join('；')}）。若持续增加，可能是日志格式变更。`;
+    }
   }
   $('#settings-dialog').showModal();
 }

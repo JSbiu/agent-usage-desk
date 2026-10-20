@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Agent Usage Desk",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Agent Usage Desk：Codex、WorkBuddy 桌面端与 CodeBuddy CLI 的本机用量、缓存与每日统计；每分钟自动刷新，可调整间隔。",
   "minimum_chrome_version": "120",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx48UIJsSrfdxk3FNPWPlS/kfa4lVQQFac/RU37k1dwRfiXV4sfzRTn1xm1CnRElPlj2jJuA96ltLGRczd9amSSD6e6sp0cCYokh0Xhj8Yw1AYCmPVoA26mtFouj9vvyzfdZe+A56Xcybm8VjEohoAwyrRbCgrduraQWfXaTdcjIc9frSTiJetiBVOOwEsWmv6TgYBnztT1bkJEWTm1RdeteUhNRtkZb4FxRrdhDz0Uqr0l2WCd0+vXNq+yPMFEpLgadx4rxwf9KAirmR1NImfhQLeUyDNT1Xy0zWMSyxua0D0pGj2TdV4QfFPwIZ4V69Rs/ERYLraIY+x4Ud7gI0xQIDAQAB",

@@ -2,7 +2,7 @@
 
 > 基于 Windows 环境开发，目前仅支持 Windows；macOS/Linux 未适配。
 
-Agent Usage Desk 是一个本地运行的用量仪表盘：读取本机 Codex、WorkBuddy 桌面端与 CodeBuddy CLI 的日志，汇总请求记录、输出速度、首字延迟、缓存命中与参考成本，并展示已登录账号的额度。当前版本 0.3.2，以 Chrome 扩展 + 本机读取器（Native Messaging）的形式工作。
+Agent Usage Desk 是一个本地运行的用量仪表盘：读取本机 Codex、WorkBuddy 桌面端与 CodeBuddy CLI 的日志，汇总请求记录、输出速度、首字延迟、缓存命中与参考成本，并展示已登录账号的额度。当前版本 0.3.3，以 Chrome 扩展 + 本机读取器（Native Messaging）的形式工作。
 
 项目在 Windows 10、PowerShell 7 环境开发与验证。扩展声明的最低 Chrome 版本为 120，未逐一验证所有后续版本；macOS/Linux 未适配。源码构建还需要 Python 3.12 与 Windows 自带的 .NET Framework 编译器；测试需要 Node 24，可选的界面测试需要 Playwright Chromium。当前通过“加载已解压的扩展程序”安装。
 
@@ -21,6 +21,7 @@ Agent Usage Desk 是一个本地运行的用量仪表盘：读取本机 Codex、
 - **账号额度**：Codex 订阅额度通过本机 `codex app-server` 的 `account/rateLimits/read` 读取；WorkBuddy 个人账号积分与积分包通过官方计费接口查询。额度每 5 分钟更新。
 - **自动刷新**：记录默认每 1 分钟刷新，可在设置中改为 30 秒至 60 分钟。
 - **本地优先**：原始日志只读，索引保存在本机 SQLite，不保存聊天正文，无遥测与云同步。
+- **数据健康度**：设置中显示无法解析的日志行数；上游格式变化时数字不会静默变小。
 
 额度查询属于现有行为：安装并运行后，会对本机已登录的账号自动发起查询。当前代码没有单独的授权开关，也不能在设置中关闭额度查询，详见 [隐私说明](docs/privacy.md)。
 
@@ -56,7 +57,7 @@ python .\scripts\build.py
 产物：
 
 - `dist\AgentUsageDesk\`：可直接安装的目录（内含 `CodexMonitorHost.exe`、`extension`、`native`、`runtime`、`docs`、`LICENSE`、`THIRD-PARTY.md`）。
-- `dist\AgentUsageDesk-0.3.2-windows.zip`：同一目录的压缩包。
+- `dist\AgentUsageDesk-0.3.3-windows.zip`：同一目录的压缩包。
 
 安装目录名 `CodexMonitor`、主机名 `com.codexmonitor.reader` 与 `CodexMonitorHost.exe` 是兼容性标识，构建与安装时不会改名。
 

@@ -122,3 +122,5 @@ dialog{border:1px solid var(--line);border-radius:16px;color:var(--ink);box-shad
 .usage-segment,.usage-segment-unknown{transition:opacity .15s}.usage-unknown-mark{font-family:var(--mono);font-weight:700}
 @media(max-width:760px){.quota-split{grid-template-columns:1fr}.quota-codex{padding-right:0;border-right:0;border-bottom:1px solid var(--line);padding-bottom:9px}.quota-buddy{padding-left:0;padding-top:9px}.buddy-source{white-space:normal}.packages-dialog{padding:16px 14px}}
 @media(max-width:650px){.common-controls{align-items:stretch}.common-controls .filters{width:100%}.common-controls .refresh-area{width:100%;justify-content:flex-end}.common-scope{height:auto;padding:7px 9px}.table-toolbar{align-items:flex-start}.table-scope{width:100%;justify-content:space-between}.table-scope span{max-width:100%}.buddy-package-name{white-space:normal}.buddy-package-times{font-size:9px}}
+.health-info{margin-top:10px;padding:9px 11px;border-radius:8px;background:#f5f8fc;color:#5a6b84;font-size:12px;line-height:1.55}
+.health-info.health-warn{background:#fff6e8;color:#8a5a10;border:1px solid #f0d6a8}

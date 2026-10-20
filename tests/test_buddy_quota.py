@@ -208,7 +208,7 @@ class BuddyQuotaTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], "Bearer " + TOKEN)
         self.assertEqual(headers["X-User-Id"], UID)
         self.assertEqual(headers["X-Domain"], "www.workbuddy.cn")
-        self.assertEqual(headers["User-Agent"], "CodexMonitor/0.3.2")
+        self.assertEqual(headers["User-Agent"], "CodexMonitor/0.3.3")
         self.assertEqual(headers["Content-Type"], "application/json")
         self.assertEqual(headers["Accept-Language"], "zh")
 

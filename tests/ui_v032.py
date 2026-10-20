@@ -1,4 +1,4 @@
-"""Synthetic 0.3.2 dashboard check.
+"""Synthetic dashboard check.
 
 Serves the extension over localhost and mocks Chrome APIs inside Chromium.
 No Native Messaging, real profile, real log or account data is used.
@@ -229,7 +229,7 @@ STATUS = {
         "models": {"workbuddy-desktop": ["deepseek-v4.1-flash"],
                    "codebuddy-cli": ["deepseek-v4.1-flash"]},
     },
-    "appVersion": "0.3.2", "responseBackfillPending": False, "quota": QUOTA,
+    "appVersion": "0.3.3", "responseBackfillPending": False, "quota": QUOTA,
 }
 
 STATE = {"busy": False, "error": None, "status": STATUS, "nextAlarm": STAMP + 60,

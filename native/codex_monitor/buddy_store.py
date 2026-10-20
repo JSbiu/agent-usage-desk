@@ -1018,9 +1018,13 @@ class BuddyStore:
             files = self.db.execute("SELECT COUNT(*) FROM files WHERE source=?", (source,)).fetchone()[0]
             summary = self.db.execute("SELECT COUNT(*),MIN(at),MAX(at) FROM requests WHERE source=?", (source,)).fetchone()
             records = summary[0]
+            quality = self.db.execute(
+                "SELECT COALESCE(SUM(skipped), 0), COALESCE(SUM(invalid), 0) FROM files WHERE source=?",
+                (source,)).fetchone()
             sources[source] = {"root": str(root) if root else None,
                                "exists": bool(root and root.is_dir()),
                                "files": files, "records": records,
+                               "skipped": int(quality[0] or 0), "invalid": int(quality[1] or 0),
                                "earliest": summary[1], "latest": summary[2],
                                "stale": bool(meta.get("lastImport", {}).get("sources", {}).get(source, {}).get("stale"))}
         bridge = {"root": str(self.bridge) if self.bridge else None,

@@ -19,9 +19,9 @@
 | `AGENTS.md` | 首段版本号 | 1 |
 | `docs/privacy.md` | 首段「本文描述 Agent Usage Desk x.y.z 的实际行为」 | 1 |
 | `tests/test_buddy_quota.py` | User-Agent 断言 | 1 |
-| `tests/ui_v032.py` | 脚本说明行与合成状态中的 `appVersion` | 2 |
+| `tests/ui_v032.py` | 合成状态中的 `appVersion` | 1 |
 
-合计 10 处。修改完成后自查，输出行数应为 10：
+合计 9 处。修改完成后自查，输出行数应为 9：
 
 ```powershell
 Select-String -Path AGENTS.md,README.md,docs\privacy.md,extension\manifest.json,native\codex_monitor\__init__.py,native\codex_monitor\buddy_quota.py,tests\test_buddy_quota.py,tests\ui_v032.py -Pattern '<版本号>'
@@ -39,7 +39,7 @@ Select-String -Path AGENTS.md,README.md,docs\privacy.md,extension\manifest.json,
 
 ### 版本与文档
 
-- [ ] 上表八行对应的 10 处版本号一致，自查命令输出 10 行
+- [ ] 上表八行对应的 9 处版本号一致，自查命令输出 9 行
 - [ ] `README.md` 的功能列表与当前实际行为一致，没有描述尚未实现的能力
 - [ ] `docs/privacy.md` 与真实网络行为一致：仅访问三个固定计费地址、不刷新令牌、索引不保存聊天正文
 - [ ] 新增的相对链接都指向存在的文件

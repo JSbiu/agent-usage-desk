@@ -97,6 +97,22 @@ class Store:
             PRAGMA user_version=3;
             """)
         self.ensure_response_daily()
+        if self.db.execute("PRAGMA user_version").fetchone()[0] < 4:
+            # Skipped line counts lived only inside the per-file state JSON, which
+            # cannot be summed in SQL. A column keeps the number queryable and lets
+            # the dashboard report unparsed lines without decoding every state blob.
+            columns = {row[1] for row in self.db.execute("PRAGMA table_info(files)")}
+            if "skipped" not in columns:
+                self.db.execute("ALTER TABLE files ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0")
+                for path, state in self.db.execute("SELECT path, state FROM files").fetchall():
+                    try:
+                        value = int(json.loads(state).get("skipped") or 0)
+                    except (AttributeError, TypeError, ValueError):
+                        value = 0
+                    if value:
+                        self.db.execute("UPDATE files SET skipped=? WHERE path=?", (value, path))
+            self.db.execute("PRAGMA user_version=4")
+            self.db.commit()
 
     def close(self):
         self.db.close()
@@ -106,6 +122,11 @@ class Store:
 
     def put_meta(self, key, value):
         self.db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", (key, encode(value)))
+
+    def health_summary(self):
+        """Counts for lines the parser could not interpret, summed per file."""
+        row = self.db.execute("SELECT COALESCE(SUM(skipped), 0) FROM files").fetchone()
+        return {"skipped": int(row[0] or 0), "invalid": 0}
 
     def index_summary(self):
         r = self.db.execute("SELECT COUNT(*) records, MIN(at) earliest, MAX(at) latest FROM requests").fetchone()
@@ -375,8 +396,9 @@ class Store:
                         prefix_len = min(512, stat.st_size)
                         with Path(path).open("rb") as stream:
                             prefix = hashlib.sha256(stream.read(prefix_len)).hexdigest()
-                    self.db.execute("INSERT OR REPLACE INTO files VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                    (path, stat.st_size, stat.st_mtime_ns, identity, prefix, prefix_len, state))
+                    self.db.execute("INSERT OR REPLACE INTO files VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    (path, stat.st_size, stat.st_mtime_ns, identity, prefix, prefix_len, state,
+                                     session.skipped))
                 for path in previous.keys() - paths.keys():
                     dirty.update(r[0] for r in self.db.execute(
                         "SELECT key FROM observations WHERE path=?", (path,)))

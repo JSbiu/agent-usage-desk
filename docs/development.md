@@ -119,3 +119,11 @@ ID = f(SHA256(DER 公钥))  // 取前 32 个十六进制字符，逐位映射为
 在 Windows 10 本机，99 项 Python 测试、27 项 Node 测试、合成数据 Chromium 界面检查和 Windows 打包通过。安装/卸载脚本通过 PowerShell 语法检查，本轮未实际安装或修改注册表，未查询真实账号。统计核心与现有 0.3.2 一致；修改限于公开文档、显示名称和安装包许可文件。
 
 首次源码上传后，[GitHub Actions 的 Windows 检查](https://github.com/JSbiu/agent-usage-desk/actions/runs/39362391105) 已通过 Python 与 Node 测试。第三方二进制的完整许可核对尚未完成，详见 [第三方说明](third-party.md)；本轮仅公开源码，未上传安装包。
+
+## 0.3.3 数据健康度验证（2026-10-20）
+
+0.3.3 新增 `status.health` 以及每个来源的 `skipped` / `invalid` 计数，用于暴露解析失败后被跳过的日志行。索引结构升级到 `user_version=4`：`files` 表新增 `skipped` 列，迁移时从既有 state JSON 回填历史值；列已存在时跳过 `ALTER TABLE`，避免升级中断后重复执行报「duplicate column」。
+
+验证范围：102 项 Python 测试（含 `tests/test_health.py` 的 3 项新增用例）、27 项 Node 测试、`extension/dashboard.mjs` 语法检查。
+
+本轮执行的运行时为 WSL Ubuntu 22.04 的 Python 3.10.12 与 Windows 的 Node 22.23.3，**未在 Windows 10 + Python 3.12 + Node 24 的发布环境复跑**；Playwright 界面测试与 Windows 打包本轮未执行。归档截图与界面实测留待发版前按 [release.md](release.md) 的核对项补齐。
