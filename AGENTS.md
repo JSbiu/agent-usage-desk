@@ -1,6 +1,6 @@
 # AGENTS.md
 
-面向在本仓库工作的维护者与自动化代理。项目对外名称为 **Agent Usage Desk**，版本 0.3.4，MIT 许可，仅在 Windows 上开发和验证。
+面向在本仓库工作的维护者与自动化代理。项目对外名称为 **Agent Usage Desk**，版本 0.3.5，MIT 许可，仅在 Windows 上开发和验证。
 
 ## 项目结构
 

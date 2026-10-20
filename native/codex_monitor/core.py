@@ -26,6 +26,22 @@ def stamp(value):
     except (ValueError, TypeError, AttributeError):
         return None
 
+def project_key(value):
+    """Normalize a working directory into a stable grouping key.
+
+    Only the directory is inspected; message text, prompts and credentials are
+    never read. Returns an empty string when the line carries no usable path.
+    """
+    if not isinstance(value, str):
+        return ""
+    text = value.strip().strip('"').replace("\\", "/").rstrip("/")
+    if not text or len(text) > 512 or "\n" in text or "\x00" in text:
+        return ""
+    if len(text) > 1 and text[1] == ":":
+        text = text[0].upper() + text[1:]
+    return text
+
+
 def service_tier(value):
     if not isinstance(value, str):
         return "unknown"
@@ -61,11 +77,13 @@ class Row:
     duration: float | None
     tier: str = "unknown"
     tier_source: str = "unknown"
+    project: str = ""
 
 class Session:
     def __init__(self, path, max_rows=500, since=None):
         self.path, self.offset = path, 0
         self.session, self.model = str(path), "?"
+        self.project = ""
         self.boundary = self.start = self.end = None
         self.tier = ("unknown", "unknown")
         self.request_tier = self.output_tier = None
@@ -99,12 +117,16 @@ class Session:
             return
         if row.get("type") == "session_meta":
             self.session = p.get("id") or self.session
+            self.project = project_key(p.get("cwd")) or self.project
             self.apply_tier(p)
         elif row.get("type") == "turn_context":
             self.model = p.get("model") or "?"
             self.apply_tier(p, context=True)
         elif kind == "thread_settings_applied":
-            self.apply_tier(p.get("thread_settings"))
+            settings = p.get("thread_settings")
+            if isinstance(settings, dict):
+                self.project = project_key(settings.get("cwd")) or self.project
+            self.apply_tier(settings)
         elif kind == "task_started":
             self.boundary, self.start, self.end = ts, None, None
             self.request_tier, self.output_tier = self.tier, None
@@ -169,7 +191,8 @@ class Session:
             # later tool calls change model/mode or finish on another local day.
             self.turn_first = dict(key=key, turnId=self.turn_id)
         if self.since is None or self.end >= self.since:
-            self.rows.append(Row(key, self.end, self.model, usage, duration, tier, source))
+            self.rows.append(Row(key, self.end, self.model, usage, duration, tier, source,
+                                self.project))
         # Old token_count may arrive AFTER tool results. Preserve the latest input
         # boundary, but use the last generated item's timestamp as response end.
         if self.boundary is None or self.boundary <= self.end:

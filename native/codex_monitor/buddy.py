@@ -6,6 +6,8 @@ reasoning, titles and credentials are never copied out of a source line.
 from dataclasses import dataclass
 from math import isfinite
 
+from .core import project_key
+
 SOURCES = ("workbuddy-desktop", "codebuddy-cli")
 LABELS = {"workbuddy-desktop": "WorkBuddy 桌面端", "codebuddy-cli": "CodeBuddy CLI"}
 MAX_MODEL = 160
@@ -36,6 +38,7 @@ class Record:
     credit: float | None
     trace_id: str | None = None
     boundary_duration: float | None = None
+    project: str = ""
 
     def data(self):
         return {
@@ -46,6 +49,7 @@ class Record:
             "cache": self.cached_input_tokens, "cacheKnown": self.cached_input_tokens is not None,
             "credit": self.credit, "creditValid": self.credit is not None,
             "traceId": self.trace_id, "boundaryDuration": self.boundary_duration,
+            "project": self.project,
         }
 
 
@@ -169,7 +173,8 @@ def parse_record(row, source):
         message_id=message_id, conversation_request_id=conversation,
         at=float(timestamp) / 1000.0, model=model,
         input_tokens=input_tokens, output_tokens=output_tokens,
-        cached_input_tokens=cached, credit=credit, trace_id=trace)
+        cached_input_tokens=cached, credit=credit, trace_id=trace,
+        project=project_key(row.get("cwd")))
     return record, None
 
 

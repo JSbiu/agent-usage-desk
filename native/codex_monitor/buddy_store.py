@@ -139,6 +139,11 @@ class BuddyStore:
                 self.db.execute("DELETE FROM meta WHERE key='responseBackfill'")
             self.db.execute("PRAGMA user_version=3")
         self.db.commit()
+        if "project" not in {row[1] for row in self.db.execute("PRAGMA table_info(requests)")}:
+            self.db.execute("ALTER TABLE requests ADD COLUMN project TEXT")
+            # 项目维度只能从原始日志提取，清空文件偏移触发一次全量重建。
+            self.db.execute("DELETE FROM files")
+            self.db.commit()
 
     def close(self):
         self.db.close()
@@ -301,14 +306,14 @@ class BuddyStore:
             (key, source, session_id, at, model, input, output, cache, cache_known,
              credit, credit_valid, path, data, trace_id, request_id, boundary_duration,
              duration, timing_source, speed, cost, cost_basis, priced, message_id,
-             first_token, first_token_source, first_token_basis)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+             first_token, first_token_source, first_token_basis, project)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (data["key"], data["source"], data["sessionId"], data["at"], data["model"],
              data["input"], data["output"], data["cache"], int(bool(data["cacheKnown"])),
              data["credit"], int(bool(data["creditValid"])), path, encode(data),
              data.get("traceId"), data.get("requestId"), boundary, None, None, None,
              cost, basis, int(cost is not None), message_id, first_token,
-             first_source, first_basis))
+             first_source, first_basis, data.get("project") or ""))
 
     @staticmethod
     def _evidence_matches(observation, candidate):

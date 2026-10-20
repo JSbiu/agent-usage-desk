@@ -181,7 +181,8 @@ export class Coordinator {
         return this.refresh('查看页面');
       case 'quota': return this.refreshQuota();
       case 'details':
-      case 'stats': return this.query(message.op, message.params ?? {});
+      case 'stats':
+      case 'projects': return this.query(message.op, message.params ?? {});
       case 'configure': {
         const input = message.params ?? {};
         const minutes = Number(input.refreshMinutes ?? this.state.refreshMinutes);

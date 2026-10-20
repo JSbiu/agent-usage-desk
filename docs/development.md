@@ -135,3 +135,12 @@ ID = f(SHA256(DER 公钥))  // 取前 32 个十六进制字符，逐位映射为
 - `coordinator.query()` 成功后清除 storage 中残留的旧错误，避免一次失败的初始化让提示条长期驻留。
 
 验证：105 项 Python 测试（含新增 `tests/test_encrypted_credential.py` 3 项）、Node 测试与 `coordinator.mjs` 语法检查通过。本机实测解密耗时 0.2 s、令牌长度 1536；`codex app-server` 实时读回 plus 套餐的 5 小时与周窗口用量。仍未在 Windows 10 + Python 3.12 发布环境复跑打包与界面测试。
+
+## 0.3.5 项目维度归因（2026-10-20）
+
+- 解析层从 `session_meta.payload.cwd`、`thread_settings.cwd`（Codex）与每行的 `cwd`（WorkBuddy / CodeBuddy CLI）提取工作目录，经 `core.project_key()` 归一化为分组键：反斜杠转正斜杠、去掉尾部斜杠、盘符大写、超长或含换行的值直接丢弃。
+- 索引结构升级到 `user_version=5`：`requests` 表新增 `project` 列。项目维度只能从原始日志取，迁移时清空 `files` 偏移触发一次全量重建；`buddy_store` 的同类迁移放在版本判断之外，保证已有库也会补列。
+- 新增 `projects` 操作，直接对 `requests` 聚合（不经过 `daily` 预聚合），按成本降序返回记录数、token、缓存与成本，并列出贡献来源。
+- 前端新增「项目」标签页；项目名取路径末两段显示，完整路径放在 tooltip 里。
+
+验证：111 项 Python 测试（含新增 `tests/test_projects.py` 6 项）、Node 测试与 `dashboard.mjs` / `coordinator.mjs` 语法检查通过。本机实测 43 个项目分组，Codex 2573 条与 WorkBuddy 5365 条全部完成归因；同一路径的 `handbook` 已合并为一条。仍未在 Windows 10 + Python 3.12 发布环境复跑打包与界面测试。

@@ -229,7 +229,7 @@ STATUS = {
         "models": {"workbuddy-desktop": ["deepseek-v4.1-flash"],
                    "codebuddy-cli": ["deepseek-v4.1-flash"]},
     },
-    "appVersion": "0.3.4", "responseBackfillPending": False, "quota": QUOTA,
+    "appVersion": "0.3.5", "responseBackfillPending": False, "quota": QUOTA,
 }
 
 STATE = {"busy": False, "error": None, "status": STATUS, "nextAlarm": STAMP + 60,

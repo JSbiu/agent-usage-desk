@@ -14,7 +14,7 @@ from .core import Row, Session, cost_value, effective_tier, response_percentiles
 
 STATE_FIELDS = ("offset", "session", "model", "boundary", "start", "end", "tier",
                 "request_tier", "output_tier", "modern", "last_total", "skipped",
-                "turn_id", "turn_first", "response_version")
+                "turn_id", "turn_first", "response_version", "project")
 TUPLE_FIELDS = {"tier", "request_tier", "output_tier", "last_total"}
 DAILY_COLUMNS = ("day", "model", "mode", "records", "timed", "inp", "out", "cache",
                  "cost", "priced", "timed_out", "seconds", "median", "minimum", "maximum")
@@ -112,6 +112,14 @@ class Store:
                     if value:
                         self.db.execute("UPDATE files SET skipped=? WHERE path=?", (value, path))
             self.db.execute("PRAGMA user_version=4")
+            self.db.commit()
+        if self.db.execute("PRAGMA user_version").fetchone()[0] < 5:
+            columns = {row[1] for row in self.db.execute("PRAGMA table_info(requests)")}
+            if "project" not in columns:
+                self.db.execute("ALTER TABLE requests ADD COLUMN project TEXT")
+                # 项目维度只能从原始日志提取，清空文件偏移触发一次全量重建。
+                self.db.execute("DELETE FROM files")
+            self.db.execute("PRAGMA user_version=5")
             self.db.commit()
 
     def close(self):
@@ -434,10 +442,11 @@ class Store:
                             historical += row.at < today
                         changed_groups.add((datetime.fromtimestamp(row.at).date().isoformat(), row.model, effective_tier(row)))
                         speed = u["output_tokens"] / row.duration if row.duration and u["output_tokens"] else None
-                        self.db.execute("INSERT OR REPLACE INTO requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        self.db.execute("INSERT OR REPLACE INTO requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                                         (row.key, row.at, row.model, effective_tier(row), u["input_tokens"],
                                          u["output_tokens"], u["cached_input_tokens"], row.duration, speed,
-                                         cost_value(row), candidate["data"], candidate["path"]))
+                                         cost_value(row), candidate["data"], candidate["path"],
+                                         row.project))
                         updated += 1
                 updated_turns = self.reconcile_turns(turn_dirty, response_groups)
                 meta = self.metadata()

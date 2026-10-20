@@ -269,6 +269,33 @@ function details(rows) {
   }));
 }
 
+function projectName(path) {
+  const parts = (path || '').replace(/\\/g, '/').replace(/\/+$/, '').split('/').filter(Boolean);
+  if (!parts.length) return '未知项目';
+  return parts.slice(-2).join('/');
+}
+
+function projects(rows) {
+  headers([{ label: '项目' }, { label: '来源' }, { label: '请求', numeric: true },
+    { label: '输入', numeric: true }, { label: '输出', numeric: true },
+    { label: '缓存命中', numeric: true }, { label: '成本', numeric: true }]);
+  if (!rows.length) { empty(7); return; }
+  $('#data-table tbody').replaceChildren(...rows.map((item) => {
+    const row = document.createElement('tr');
+    const sources = Object.keys(item.sources || {}).join(' + ');
+    const hit = item.input ? item.cache / item.input : null;
+    row.append(
+      td(projectName(item.project), 'mono project-cell', item.project || '未记录工作目录'),
+      td(sources, 'source-cell'),
+      td(full(item.records), 'mono numeric'),
+      td(tokens(item.input), 'mono numeric token-input', full(item.input) + ' token'),
+      td(tokens(item.output), 'mono numeric token-output', full(item.output) + ' token'),
+      td(percent(hit), 'mono numeric'),
+      costCell({ cost: item.cost, priced: item.priced, records: item.records }, true));
+    return row;
+  }));
+}
+
 function statistics(rows) {
   const labels = ['日期', '工具', '模型', '样本', '输入', '输出', '缓存命中', '成本', '首字', '平均', '最低', '最高'];
   headers(labels.map((label, i) => ({ label, sort: i === 0 ? 'day' : null, numeric: i >= 3, title: i === 3 ? '可测速记录 / 全部记录' : i === 8 ? responseDefinition + '\n中位数、P90（秒）及有效样本 / 可关联请求或轮次。' : i === 9 ? '加权平均速度，单位 tok/s' : i >= 10 ? '单条有效速度，单位 tok/s' : '' })));
@@ -496,6 +523,14 @@ async function loadView(options = {}) {
       if (page > pages) page = 1;
       statistics(statsRows.slice((page - 1) * prefs.pageSize, page * prefs.pageSize));
       pagination(statsRows.length, true);
+      return;
+    }
+
+    if (tab === 'projects') {
+      const data = await send('projects', filters(null));
+      if (current !== sequence) return;
+      projects(data.rows || []);
+      pagination(0, true);
       return;
     }
 

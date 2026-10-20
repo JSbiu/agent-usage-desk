@@ -451,6 +451,58 @@ class Service:
         return groups
 
     @staticmethod
+    def project_groups(store, buddy, since, days, source):
+        """Aggregate indexed requests by working directory.
+
+        Rows without a recorded directory stay in their own bucket and are never
+        merged into a guess; the caller decides how to label them.
+        """
+        until = since + days * 86400
+        merged = {}
+
+        def bucket(project):
+            key = project or ""
+            item = merged.get(key)
+            if item is None:
+                item = merged[key] = {"project": key, "records": 0, "input": 0,
+                                      "output": 0, "cache": 0, "cost": None,
+                                      "priced": 0, "sources": {}}
+            return item
+
+        def add(project, source_id, records, input_tokens, output_tokens,
+                cache_tokens, cost, priced):
+            item = bucket(project)
+            item["records"] += records
+            item["input"] += input_tokens or 0
+            item["output"] += output_tokens or 0
+            item["cache"] += cache_tokens or 0
+            per_source = item["sources"].setdefault(source_id, {"records": 0, "cost": None})
+            per_source["records"] += records
+            if cost is not None:
+                item["cost"] = (item["cost"] or 0) + cost
+                item["priced"] += priced
+                per_source["cost"] = (per_source["cost"] or 0) + cost
+
+        if source in (None, "codex"):
+            for row in store.db.execute(
+                    "SELECT project, COUNT(*), SUM(inp), SUM(out), SUM(cache),"
+                    " SUM(cost), COUNT(cost) FROM requests WHERE at >= ? AND at < ?"
+                    " GROUP BY project", (since, until)):
+                add(row[0], "codex", row[1], row[2], row[3], row[4], row[5], row[6])
+
+        if buddy is not None and source in (None, "workbuddy-desktop", "codebuddy-cli"):
+            for row in buddy.db.execute(
+                    "SELECT project, source, COUNT(*), SUM(input), SUM(output), SUM(cache),"
+                    " SUM(cost), COUNT(cost) FROM requests WHERE at >= ? AND at < ?"
+                    " GROUP BY project, source", (since, until)):
+                add(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
+
+        rows = sorted(merged.values(),
+                      key=lambda item: (item["cost"] is None, -(item["cost"] or 0),
+                                        -item["records"]))
+        return rows
+
+    @staticmethod
     def buddy_groups(rows):
         groups = {}
         for row in rows:
@@ -649,7 +701,7 @@ class Service:
             return self.quota(params)
         if operation == "configure":
             return self.configure(params)
-        if operation not in ("refresh", "status", "details", "stats"):
+        if operation not in ("refresh", "status", "details", "stats", "projects"):
             raise ValueError("不支持的操作。")
         store = Store(self.home(), self.cache)
         buddy = None
@@ -686,6 +738,11 @@ class Service:
                 return status
             source = self.source(params)
             where, values, since, days = self.filters(params)
+            if operation == "projects":
+                # 项目视图始终汇总全部来源：问题问的是“这个项目花了多少”，
+                # 与当前选中的来源筛选无关。
+                return {"rows": self.project_groups(store, buddy, since, days, None),
+                        "status": status, "days": days}
             page, size = self.paging(params, 100 if operation == "stats" else 50)
             first = datetime.fromtimestamp(since).date()
             last = first + timedelta(days=days - 1)
