@@ -80,6 +80,12 @@ export class Coordinator {
           this.setStatus(data.status);
           await this.save();
         }
+        if (this.state.error) {
+          // A successful query proves the reader is reachable, so an error kept in
+          // storage from an earlier failed initialize no longer describes reality.
+          this.state.error = null;
+          await this.save();
+        }
         return data;
       });
       this.queries.set(key, pending);

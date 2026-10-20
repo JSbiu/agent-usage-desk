@@ -50,11 +50,16 @@ def snapshot(result, fetched_at=None, source="account"):
 
 def executable():
     found = shutil.which("codex.exe" if os.name == "nt" else "codex")
-    desktop = Path(os.environ.get("LOCALAPPDATA", "")) / "OpenAI" / "Codex" / "bin" / "codex.exe"
     if found:
         return found
-    if desktop.is_file():
-        return str(desktop)
+    base = Path(os.environ.get("LOCALAPPDATA", "")) / "OpenAI" / "Codex" / "bin"
+    direct = base / "codex.exe"
+    if direct.is_file():
+        return str(direct)
+    # 桌面应用把二进制放在 bin/<构建哈希>/ 下，哈希随版本变化，取最近写入的一个。
+    nested = [item for item in base.glob("*/codex.exe") if item.is_file()]
+    if nested:
+        return str(max(nested, key=lambda item: item.stat().st_mtime))
     raise RuntimeError("未找到 Codex 程序，请安装 Codex 并登录订阅账号。")
 
 

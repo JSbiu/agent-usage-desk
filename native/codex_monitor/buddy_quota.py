@@ -13,6 +13,7 @@ import json
 import math
 import os
 from pathlib import Path
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -21,7 +22,7 @@ API_URL = "https://www.workbuddy.cn/billing/meter/get-user-resource-summary"
 PAID_URL = "https://www.workbuddy.cn/billing/meter/get-user-resource-paid-packages"
 FREE_URL = "https://www.workbuddy.cn/billing/meter/get-user-resource-free-packages"
 API_DOMAIN = "www.workbuddy.cn"
-USER_AGENT = "CodexMonitor/0.3.3"
+USER_AGENT = "CodexMonitor/0.3.4"
 CREDENTIAL_PARTS = ("CodeBuddyExtension", "Data", "Public", "auth", "workbuddy-desktop.info")
 CACHE_NAME = "buddy-quota.json"
 CACHE_VERSION = 3
@@ -92,6 +93,8 @@ DETAILS_TRUNCATED = "WorkBuddy 积分包明细未完整返回，暂时无法显�
 DETAILS_INCOMPLETE = "WorkBuddy 积分包明细缺少部分积分包，暂时无法显示。"
 DETAILS_TIMEOUT = "WorkBuddy 积分包明细查询超时。"
 SWITCH_MESSAGE = "WorkBuddy 账号已切换，请重新查询额度。"
+ENCRYPTED_NO_EXE = "未找到 WorkBuddy 主程序，无法解密登录令牌；可用环境变量 WORKBUDDY_EXE 指定路径。"
+ENCRYPTED_FAILED = "WorkBuddy 登录令牌解密失败，额度暂时无法显示。"
 
 
 class QuotaFailure(Exception):
@@ -453,6 +456,59 @@ def _parse_details(accounts, summary_remaining, eligible_codes=None):
     return packages
 
 
+WORKBUDDY_CANDIDATES = (
+    r"%LOCALAPPDATA%\Programs\WorkBuddy\WorkBuddy.exe",
+    r"%LOCALAPPDATA%\WorkBuddy\WorkBuddy.exe",
+    r"%PROGRAMFILES%\WorkBuddy\WorkBuddy.exe",
+    r"%PROGRAMFILES(X86)%\WorkBuddy\WorkBuddy.exe",
+    r"D:\Apps\WorkBuddy\WorkBuddy.exe",
+)
+
+
+def workbuddy_executable():
+    """Locate the WorkBuddy client; WORKBUDDY_EXE overrides every other guess."""
+    override = os.environ.get("WORKBUDDY_EXE")
+    if override and Path(override).is_file():
+        return Path(override)
+    for pattern in WORKBUDDY_CANDIDATES:
+        expanded = os.path.expandvars(pattern)
+        if "%" in expanded:
+            continue
+        if Path(expanded).is_file():
+            return Path(expanded)
+    return None
+
+
+def decrypt_token(auth_path):
+    """Return the plaintext access token for an at-rest encrypted envelope.
+
+    WorkBuddy 5.6+ stores auth.accessToken as {"$wbEncrypted": 1, "envelope": ...}.
+    The AES key is a build-time constant with no on-disk copy, so it can only be
+    obtained from the client's own Electron runtime through its native binding.
+    Decryption happens in memory only: nothing is written back to the credential
+    file, and neither the token nor the key is logged.
+    """
+    executable = workbuddy_executable()
+    if executable is None:
+        raise QuotaFailure("error", ENCRYPTED_NO_EXE)
+    helper = Path(__file__).with_name("token_helper.js")
+    if not helper.is_file():
+        raise QuotaFailure("error", ENCRYPTED_FAILED)
+    env = dict(os.environ)
+    env["ELECTRON_RUN_AS_NODE"] = "1"
+    try:
+        result = subprocess.run([str(executable), str(helper), str(auth_path)],
+                                capture_output=True, env=env, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        raise QuotaFailure("error", ENCRYPTED_FAILED)
+    if result.returncode != 0:
+        raise QuotaFailure("error", ENCRYPTED_FAILED)
+    token = (result.stdout or b"").decode("utf-8", "replace").strip()
+    if not token:
+        raise QuotaFailure("error", ENCRYPTED_FAILED)
+    return token
+
+
 def _credential(path, now):
     marker = Path(str(path) + ".logged-out")
     try:
@@ -503,6 +559,9 @@ def _credential(path, now):
         raise QuotaFailure("error", DOMAIN_MESSAGE)
 
     token = auth.get("accessToken")
+    if isinstance(token, dict):
+        # 5.6+ wraps the token in an at-rest envelope; decrypt before the shared checks.
+        token = decrypt_token(path)
     if (not isinstance(token, str) or not token or len(token) > 8192
             or any(char in token for char in "\r\n\x00")):
         raise QuotaFailure("error", INVALID_CREDENTIAL)

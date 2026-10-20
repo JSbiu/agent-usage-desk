@@ -127,3 +127,11 @@ ID = f(SHA256(DER 公钥))  // 取前 32 个十六进制字符，逐位映射为
 验证范围：102 项 Python 测试（含 `tests/test_health.py` 的 3 项新增用例）、27 项 Node 测试、`extension/dashboard.mjs` 语法检查。
 
 本轮执行的运行时为 WSL Ubuntu 22.04 的 Python 3.10.12 与 Windows 的 Node 22.23.3，**未在 Windows 10 + Python 3.12 + Node 24 的发布环境复跑**；Playwright 界面测试与 Windows 打包本轮未执行。归档截图与界面实测留待发版前按 [release.md](release.md) 的核对项补齐。
+
+## 0.3.4 额度可见性（2026-10-20）
+
+- WorkBuddy 5.6 起把 `auth.accessToken` 改为 at-rest 加密信封（`{"$wbEncrypted":1,"envelope":...}`）。读取器现在以 `ELECTRON_RUN_AS_NODE=1` 调用 WorkBuddy 自带 Electron 运行时取回构建期密钥，在内存中完成 AES-256-GCM 解密；`token_helper.js` 随 native 包分发。找不到客户端或解密失败时分别给出「未找到 WorkBuddy 主程序」与「登录令牌解密失败」提示，不再建议重复登录。
+- `quota.executable()` 支持桌面应用把二进制放在 `bin/<构建哈希>/codex.exe` 的布局，按写入时间取最新一个；仍优先使用 PATH 与旧版 `bin/codex.exe`。
+- `coordinator.query()` 成功后清除 storage 中残留的旧错误，避免一次失败的初始化让提示条长期驻留。
+
+验证：105 项 Python 测试（含新增 `tests/test_encrypted_credential.py` 3 项）、Node 测试与 `coordinator.mjs` 语法检查通过。本机实测解密耗时 0.2 s、令牌长度 1536；`codex app-server` 实时读回 plus 套餐的 5 小时与周窗口用量。仍未在 Windows 10 + Python 3.12 发布环境复跑打包与界面测试。
