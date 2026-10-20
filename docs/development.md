@@ -118,4 +118,4 @@ ID = f(SHA256(DER 公钥))  // 取前 32 个十六进制字符，逐位映射为
 
 在 Windows 10 本机，99 项 Python 测试、27 项 Node 测试、合成数据 Chromium 界面检查和 Windows 打包通过。安装/卸载脚本通过 PowerShell 语法检查，本轮未实际安装或修改注册表，未查询真实账号。统计核心与现有 0.3.2 一致；修改限于公开文档、显示名称和安装包许可文件。
 
-GitHub Actions 尚未在线运行。第三方二进制的完整许可核对尚未完成，详见 [第三方说明](third-party.md)；本轮准备源码公开，不自动上传安装包。
+首次源码上传后，[GitHub Actions 的 Windows 检查](https://github.com/JSbiu/agent-usage-desk/actions/runs/39362391105) 已通过 Python 与 Node 测试。第三方二进制的完整许可核对尚未完成，详见 [第三方说明](third-party.md)；本轮仅公开源码，未上传安装包。

@@ -6,7 +6,7 @@ Agent Usage Desk 是一个本地运行的用量仪表盘：读取本机 Codex、
 
 项目在 Windows 10、PowerShell 7 环境开发与验证。扩展声明的最低 Chrome 版本为 120，未逐一验证所有后续版本；macOS/Linux 未适配。源码构建还需要 Python 3.12 与 Windows 自带的 .NET Framework 编译器；测试需要 Node 24，可选的界面测试需要 Playwright Chromium。当前通过“加载已解压的扩展程序”安装。
 
-项目地址（计划）：https://github.com/JSbiu/agent-usage-desk
+项目地址：https://github.com/JSbiu/agent-usage-desk
 
 ![Agent Usage Desk 看板，使用合成演示数据](docs/images/dashboard.png)
 
