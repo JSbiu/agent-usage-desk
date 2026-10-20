@@ -89,7 +89,10 @@ function status(next) {
   $('#import-feedback').textContent = last || buddyLast
     ? `上次新增：Codex ${full(last?.added || 0)} 条 · 其他来源 ${full(buddyLast?.added || 0)} 条`
     : '';
-  const missing = (s?.sources || []).filter((item) => !item.available)
+  // 只有“曾经有记录、现在目录不可用”才算异常；从未用过的来源只是没有数据，
+  // 在设置里标注状态即可，不必用警告条催用户去配目录。
+  const missing = (s?.sources || [])
+    .filter((item) => !item.available && (item.records || 0) > 0)
     .map((item) => `未发现 ${item.label} 来源，请检查设置目录。`);
   showError(state.error || s?.buddy?.warning || s?.buddy?.warnings?.join('；') || missing.join('；'));
   renderQuota(state.quota ?? s?.quota, !!state.quotaBusy);
