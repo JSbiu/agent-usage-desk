@@ -113,7 +113,7 @@ pwsh -NoProfile -File "$env:LOCALAPPDATA\CodexMonitor\app\uninstall.ps1"
 | `scripts/build.py` | Windows 打包脚本 |
 | `scripts/install.ps1` / `uninstall.ps1` | 当前用户安装与卸载 |
 | `tests/` | Python 单元测试、Node 内置测试与界面测试 |
-| `docs/` | 隐私、开发、第三方与价格说明 |
+| `docs/` | 隐私、开发、发布核对、第三方与价格说明 |
 | `AGENTS.md` | 公开仓库的协作与数据保护约定 |
 
 ## 许可
