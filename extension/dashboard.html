@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Usage Desk · 本地速度监控</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 23V17M16 23V10M25 23V5"/><path d="m7 12 9-7 9-2"/></svg></span>
+        <div><h1>Agent Usage Desk</h1><p>本地用量与速度</p></div>
+      </div>
+      <div class="top-actions"><span class="local-badge"><i></i> 数据仅在本机</span><button id="settings" class="icon-button" title="设置" aria-label="设置"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></button></div>
+    </header>
+
+    <section class="quota-panel" aria-label="账号额度">
+      <div class="quota-heading"><div><h2>账号额度</h2><p>账号总量 · 不受日期筛选影响</p></div><div class="quota-actions"><button id="quota-refresh" class="secondary-button">更新额度</button></div></div>
+      <div id="quota-cards" class="quota-cards"></div>
+      <p id="quota-error" class="quota-error" role="status" hidden></p>
+    </section>
+
+    <section class="workspace">
+      <div class="common-controls">
+        <div class="filters">
+          <label>日期范围<select id="preset"><option value="1">最近 1 天</option><option value="3" selected>最近 3 天</option><option value="7">最近 7 天</option><option value="30">最近 30 天</option><option value="custom">自定义日期</option></select></label>
+          <div id="custom-dates" class="date-fields" hidden><label>开始<input id="from" type="date"></label><span>至</span><label>结束<input id="to" type="date"></label></div>
+          <span class="common-scope" title="表格仍保留工具与模型列；日期、卡片和两张图始终统计全部工具与模型">全部工具与模型</span>
+          <span class="filter-note" id="range-note"></span>
+        </div>
+        <div class="refresh-area"><span id="refresh-state" aria-live="polite">正在连接…</span><button id="refresh" class="primary-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.5 7a7 7 0 0 1 11.8-2L20 8M4 16l2.7 3a7 7 0 0 0 11.8-2"/></svg><span>刷新数据</span></button></div>
+      </div>
+
+      <div id="error" class="error-banner" role="alert" hidden><span></span><button id="error-settings">查看设置</button></div>
+
+      <section class="cards" aria-label="当前日期汇总">
+        <div class="card"><p>请求记录</p><strong id="card-records">—</strong><small id="card-timed">当前日期范围</small></div>
+        <div class="card"><p title="按官方 API 价格快照计算的参考成本；未知价格不计为零。日志 credit 显示原值。">成本 <span class="info">i</span></p><strong id="card-cost" class="cost">—</strong><small id="card-credit" hidden></small><small id="card-priced">参考价 · 2026-10-19</small></div>
+        <div class="card"><p>缓存命中率</p><strong id="card-cache">—</strong><small id="card-cache-note">缓存输入 / 总输入</small></div>
+        <div class="card"><p title="可测速记录总输出 token / 总有效耗时">加权平均速度 <span class="info">i</span></p><strong><span id="card-speed">—</span><em>tok/s</em></strong><small id="card-speed-note">包含等待与推理 token</small></div>
+      </section>
+
+      <section id="chart-panel" class="trend-grid">
+        <section class="chart-panel">
+          <div class="section-title"><div><h2 id="trend-title">每日速度趋势</h2><p id="trend-note">虚线跨过无样本日期 · 点击图例隐藏系列</p></div><select id="metric" aria-label="趋势指标"><optgroup label="输出速度 · tok/s"><option value="average">速度 · 加权平均</option><option value="median">速度 · 中位数</option></optgroup><optgroup label="首次响应 · 秒"><option value="responseMedian">响应 · 中位数</option><option value="responseP90">响应 · P90</option></optgroup></select></div>
+          <div id="chart" class="chart" aria-label="每日速度趋势图"></div><div id="legend" class="legend"></div>
+        </section>
+        <section class="chart-panel">
+          <div class="section-title"><div><h2>每日用量趋势</h2><p>按模型堆叠 · 同模型跨工具合并 · 全部工具与模型</p></div><select id="usage-metric" aria-label="用量趋势指标"><option value="output">输出 token</option><option value="input">输入 token</option><option value="records">请求记录</option><option value="cost">成本 · USD</option></select></div>
+          <div id="usage-chart" class="chart" aria-label="每日用量趋势图"></div><div id="usage-legend" class="legend usage-legend"></div><div id="usage-summary" class="usage-summary"></div>
+        </section>
+      </section>
+
+      <div class="table-toolbar">
+        <nav class="tabs" aria-label="表格视图"><button data-tab="details" class="active" aria-pressed="true">请求明细</button><button data-tab="stats" aria-pressed="false">每日统计</button></nav>
+        <div id="table-scope" class="table-scope" hidden><span id="table-scope-label"></span><button id="clear-scope" class="secondary-button">返回全部记录</button></div>
+      </div>
+
+      <div class="table-heading"><div><h2 id="table-title">请求明细</h2><p id="table-subtitle">全部工具与模型 · 按回复完成时间展示</p></div><span id="import-feedback"></span></div>
+      <div id="table-wrap" class="table-wrap"><table id="data-table"><thead></thead><tbody></tbody></table><div id="loading" class="loading" hidden>读取本地索引…</div></div>
+      <footer class="table-footer"><span id="total">共 0 条</span><div class="pagination"><select id="page-size" aria-label="每页条数"><option value="20">20 条/页</option><option value="50" selected>50 条/页</option><option value="100">100 条/页</option></select><button id="previous" class="page-button" aria-label="上一页">‹</button><span id="page-label">1 / 1</span><button id="next" class="page-button" aria-label="下一页">›</button></div></footer>
+    </section>
+
+    <div class="bottom-status"><span>上次成功刷新 <b id="last-success">—</b></span><span>最新记录 <b id="latest">—</b></span><span>下次计划刷新 <b id="next-alarm">—</b></span></div>
+    <p class="footnote">首字：Codex 每轮仅在首个请求记录一次；WorkBuddy/CLI 按模型请求记录，可能包含思考或工具片段，早于正文。P90 与中位基于有效样本，缺失不计为零。成本采用官方 API 价格快照；下方 credit 为日志原值。<span id="refresh-note">记录每 1 分钟自动刷新；账号额度每 5 分钟更新。</span></p>
+  </main>
+
+  <dialog id="detail-dialog" class="drawer"><div class="dialog-header"><div><h2>记录详情</h2><p>用量、来源、会话证据与计价依据</p></div><button data-close="detail-dialog" class="icon-button" aria-label="关闭详情">✕</button></div><dl id="detail-fields"></dl><p class="dialog-note">首字口径：Codex 每轮仅在首个请求计一次；WorkBuddy/CodeBuddy 按每次模型请求记录，可能包含思考或工具片段，早于正文。成本采用固定版本的 API 参考价。Codex Fast 的参考价乘 2，已计入请求成本。日志 credit 为本地记录原值，不能据此推算货币、订阅余额或跨来源共用额度。会话编号相同不代表上下文从未压缩；autocompact 是工作预算，不是物理窗口。</p></dialog>
+  <dialog id="package-dialog" class="packages-dialog" aria-labelledby="package-dialog-title"><div class="dialog-header"><div><h2 id="package-dialog-title">WorkBuddy 积分包</h2><p id="package-dialog-summary"></p><p id="package-dialog-meta" class="package-dialog-meta"></p></div><button data-close="package-dialog" class="icon-button" aria-label="关闭积分包">✕</button></div><div id="package-dialog-body" class="package-dialog-body"></div><div class="dialog-actions"><button data-close="package-dialog" class="secondary-button">关闭</button></div></dialog>
+  <dialog id="settings-dialog">
+    <div class="dialog-header"><div><h2>设置</h2><p>自动刷新与本地读取器</p></div><button data-close="settings-dialog" class="icon-button" aria-label="关闭设置">✕</button></div>
+    <label class="setting-field">成本显示币种<select id="currency"><option value="USD">美元 USD</option><option value="CNY">人民币 CNY</option></select></label>
+    <p class="dialog-note refresh-note">固定换算：1 美元 = 6.8 人民币。credit 保持日志原值。</p>
+    <label class="setting-field">自动刷新间隔<select id="refresh-interval"><option value="0.5">30 秒</option><option value="1" selected>1 分钟</option><option value="5">5 分钟</option><option value="15">15 分钟</option><option value="60">60 分钟</option></select></label>
+    <p class="dialog-note refresh-note">记录按此间隔更新，账号额度每 5 分钟更新。</p>
+    <label class="setting-field">Codex 目录<input id="home" type="text" placeholder="C:\Users\你的用户名\.codex" spellcheck="false"></label>
+    <p class="dialog-note">选择包含 sessions 子目录的文件夹。原始日志只读，索引不保存聊天正文。</p>
+    <label class="setting-field">WorkBuddy 桌面端目录<input id="workbuddy" type="text" placeholder="C:\Users\你的用户名\.workbuddy\projects" spellcheck="false"></label>
+    <label class="setting-field">CodeBuddy CLI 目录<input id="codebuddy" type="text" placeholder="C:\Users\你的用户名\.codebuddy\projects" spellcheck="false"></label>
+    <label class="setting-field">桥接运行目录<input id="bridge" type="text" placeholder="%LOCALAPPDATA%\CodexDeepSeek\runs" spellcheck="false"></label>
+    <p class="dialog-note">目录可留空恢复本机默认位置。缺少这些目录时 Codex 仍可使用，并会显示“未发现来源”。</p>
+    <div id="connection-info" class="connection-info"></div>
+    <p class="setup-note">初次使用：先运行安装包中的 install.ps1，再加载安装目录中的 extension 文件夹。安装只注册当前用户的本地读取器。</p>
+    <p id="setting-error" role="alert"></p>
+    <div class="dialog-actions"><button data-close="settings-dialog" class="secondary-button">取消</button><button id="save-home" class="primary-button">保存并刷新</button></div>
+  </dialog>
+  <script type="module" src="dashboard.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+# 开发与测试
+
+本文只覆盖当前仓库实际使用的流程：Windows、Python 3.12、Node，以及可选的 Playwright Chromium。命令均在仓库根目录的 PowerShell 中执行。
+
+## 环境
+
+| 用途 | 要求 |
+|---|---|
+| 运行本地读取器 / Python 测试 | Python 3.12 |
+| 打包 | Windows + .NET Framework 4 编译器（`C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe`） |
+| Node 测试 | Node 24（开发时版本） |
+| 界面测试 | Playwright + Chromium，仅开发依赖 |
+
+运行时代码只使用 Python 标准库；没有 `requirements.txt`，也不需要 `npm install`。
+
+## 目录职责
+
+- `extension/`：Chrome 扩展。`background.mjs` 负责消息与定时器，`coordinator.mjs` 协调刷新，`dashboard.*` 渲染界面。
+- `native/codex_monitor/`：Python 读取器。`host.py` 处理 Native Messaging 帧，`service.py` 提供操作，`store.py`/`buddy_store.py` 维护 SQLite 索引，`quota.py`/`buddy_quota.py` 读取账号额度，`pricing.py` 计算参考价。
+- `launcher/Launcher.cs`：无控制台的启动器，负责转发标准输入输出。
+- `scripts/`：构建与安装脚本。
+- `tests/`：Python、Node 与界面测试。
+
+## 运行测试
+
+Python 测试需要把 `native` 加入 `PYTHONPATH`：
+
+```powershell
+$env:PYTHONPATH = (Join-Path $PWD 'native')
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+该变量只在当前 PowerShell 会话生效；新开窗口需要重新设置。
+
+Node 测试使用 `node:test`，无需额外依赖：
+
+```powershell
+node --test tests/background.test.mjs tests/buddy.test.mjs tests/quota-ring.test.mjs tests/usage-chart.test.mjs
+```
+
+也可以只跑单个文件：
+
+```powershell
+node --test tests\background.test.mjs
+```
+
+### 界面测试（可选）
+
+`tests/ui_v032.py` 是当前唯一的界面测试脚本。它用合成状态在本地 HTTP 服务上加载 `extension/dashboard.html`，并在 Chromium 中模拟 `chrome.*` API，不接触真实扩展配置、日志或账号。
+
+```powershell
+python -m pip install playwright
+python -m playwright install chromium
+python .\tests\ui_v032.py
+```
+
+脚本以无头模式运行，截图写入 `artifacts\screenshots`。
+
+## 构建
+
+```powershell
+python .\scripts\build.py
+```
+
+脚本会：
+
+1. 复制当前 Python 3.12 运行时（`python.exe`、`python3xx.dll`、`python3.dll`、`vcruntime*.dll`、`DLLs`、`stdlib.zip`）到 `dist\AgentUsageDesk\runtime`。
+2. 复制 `extension`、`native`、`docs`、`README.md`、`LICENSE`、`THIRD-PARTY.md` 与安装脚本。
+3. 用 `csc.exe` 编译 `launcher\Launcher.cs` 为 `CodexMonitorHost.exe`。
+4. 生成 `extension-id.txt`，并打包为 `dist\AgentUsageDesk-<版本>-windows.zip`。
+
+ZIP 的顶层目录为 `AgentUsageDesk`。内部的 `CodexMonitorHost.exe`、扩展目录与安装目录名保持不变。
+
+安装产物：
+
+```powershell
+cd .\dist\AgentUsageDesk
+pwsh -NoProfile -File .\install.ps1
+```
+
+安装把文件复制到 `%LOCALAPPDATA%\CodexMonitor\app`，注册 `com.codexmonitor.reader`，并打印扩展 ID 与加载路径。卸载使用同一目录下的 `uninstall.ps1`。
+
+## 保持不变的标识
+
+以下名称被已有安装、注册表项与文档引用，**不要为了品牌调整而重命名**：
+
+| 标识 | 值 |
+|---|---|
+| 内部数据/安装目录 | `%LOCALAPPDATA%\CodexMonitor\app` |
+| Native Messaging 主机名 | `com.codexmonitor.reader` |
+| 启动器可执行文件 | `CodexMonitorHost.exe` |
+| Python 包 | `codex_monitor` |
+| 索引文件 | `index-<哈希>.sqlite3`、`buddy-index.sqlite3` |
+
+对外品牌是 Agent Usage Desk；上述标识属于兼容层。
+
+## 关于扩展 `key`
+
+`extension/manifest.json` 中的 `key` 是 Base64 编码的**公钥**，不是私钥或秘密。Chrome 用它的 SHA-256 前 16 字节推导扩展 ID，映射规则是把每个十六进制字符对应到 `a`–`p`：
+
+```text
+ID = f(SHA256(DER 公钥))  // 取前 32 个十六进制字符，逐位映射为 a-p
+```
+
+`build.py` 与 `install.ps1` 都按同一规则计算 ID，后者写入 Native Messaging 清单的 `allowed_origins`。因此：
+
+- 公钥可以公开提交，任何加载此扩展的人都会得到相同 ID；
+- 它不能用于给 CRX 签名，也不授予任何账号权限；
+- 更换 `key` 会改变扩展 ID，导致既有注册项失配，请勿随意修改。
+
+## 数据边界
+
+- 测试使用 `tempfile` 临时目录与合成状态，不需要真实账号或真实日志。
+- 界面测试只启动 `127.0.0.1` 上的静态文件服务。
+- 不要在测试或示例中写入真实用户名路径、会话编号或额度快照。
+
+## 公开版准备验证（2026-10-20）
+
+在 Windows 10 本机，99 项 Python 测试、27 项 Node 测试、合成数据 Chromium 界面检查和 Windows 打包通过。安装/卸载脚本通过 PowerShell 语法检查，本轮未实际安装或修改注册表，未查询真实账号。统计核心与现有 0.3.2 一致；修改限于公开文档、显示名称和安装包许可文件。
+
+GitHub Actions 尚未在线运行。第三方二进制的完整许可核对尚未完成，详见 [第三方说明](third-party.md)；本轮准备源码公开，不自动上传安装包。
